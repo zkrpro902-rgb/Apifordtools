@@ -13,7 +13,7 @@ Routes:
 import asyncio
 import re
 import httpx
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -22,11 +22,38 @@ app = FastAPI(title="DTOOLS API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET", "OPTIONS"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; DTOOLSBot/1.0)"}
+
+
+# ── WEBHOOK PROXY ──────────────────────────────────────────────
+@app.post("/webhook")
+async def webhook_proxy(request: Request):
+    """
+    Proxy pour envoyer un webhook Discord sans CORS.
+    Body JSON: { "url": "https://discord.com/api/webhooks/...", "payload": {...} }
+    """
+    try:
+        data = await request.json()
+        url = data.get("url", "").strip()
+        payload = data.get("payload", {})
+
+        if not url or "discord.com/api/webhooks/" not in url and "discordapp.com/api/webhooks/" not in url:
+            return JSONResponse({"ok": False, "error": "URL webhook invalide"}, status_code=400)
+
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.post(url, json=payload, headers={"Content-Type": "application/json"})
+            return JSONResponse({
+                "ok": r.status_code in (200, 204),
+                "status": r.status_code,
+                "body": r.text[:200] if r.text else ""
+            })
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
 
 # ── HEALTH ────────────────────────────────────────────────────
 @app.get("/health")
