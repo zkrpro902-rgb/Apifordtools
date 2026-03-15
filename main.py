@@ -425,10 +425,10 @@ async def invite(code: str = ""):
 # ── KEY SYSTEM ────────────────────────────────────────────────
 """
 Routes:
-  POST /keys/verify         { "key": "DTOOLS-xxxx" }  → valid/invalid
-  POST /keys/generate       { "secret": "BOT_SECRET", "user_id": "123", "username": "zkr", "expires_days": 30, "max_uses": -1 }
+  GET /keys/verify         { "key": "DTOOLS-xxxx" }  → valid/invalid
+  GET /keys/generate       { "secret": "BOT_SECRET", "user_id": "123", "username": "zkr", "expires_days": 30, "max_uses": -1 }
   GET  /keys/list           ?secret=BOT_SECRET
-  POST /keys/revoke         { "secret": "BOT_SECRET", "key": "DTOOLS-xxxx" }
+  GET /keys/revoke         { "secret": "BOT_SECRET", "key": "DTOOLS-xxxx" }
 """
 
 import sqlite3, secrets, string, os, time
@@ -462,7 +462,7 @@ def gen_key():
     part = lambda n: ''.join(secrets.choice(chars) for _ in range(n))
     return f"DTOOLS-{part(4)}-{part(4)}-{part(4)}"
 
-@app.post("/keys/verify")
+@app.get("/keys/verify")
 async def verify_key(request: Request):
     try:
         data = await request.json()
@@ -497,7 +497,7 @@ async def verify_key(request: Request):
     except Exception as e:
         return JSONResponse({"valid": False, "error": str(e)}, status_code=500)
 
-@app.post("/keys/generate")
+@app.get("/keys/generate")
 async def generate_key(request: Request):
     try:
         data = await request.json()
@@ -542,7 +542,7 @@ async def list_keys(secret: str = ""):
         } for r in rows
     ]})
 
-@app.post("/keys/revoke")
+@app.get("/keys/revoke")
 async def revoke_key(request: Request):
     try:
         data = await request.json()
